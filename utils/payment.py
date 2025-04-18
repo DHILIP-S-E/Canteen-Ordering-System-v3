@@ -1,11 +1,13 @@
 import razorpay
 import json
+from typing import Dict, Any
 
 class PaymentManager:
     def __init__(self):
-        # Initialize payment gateway settings here
-        # For demo purposes, we'll use a simple simulation
-        self.payment_gateway_url = "https://api.payment-gateway.example"
+        # Initialize with test credentials - replace with real ones in production
+        self.client = razorpay.Client(
+            auth=("rzp_test_your_key", "your_secret_key")
+        )
     
     def create_order(self, amount, currency="INR"):
         """Create a Razorpay order"""
@@ -20,28 +22,66 @@ class PaymentManager:
         except Exception as e:
             return None
     
-    def process_payment(self, amount):
+    def process_payment(self, amount: float) -> Dict[str, Any]:
         """
-        Process a payment through the payment gateway
-        For demo purposes, this simulates a successful payment
+        Process a payment through Razorpay
+        Args:
+            amount: Amount to be charged (in INR)
+        Returns:
+            Dict containing payment details
         """
-        # In a real implementation, this would integrate with Razorpay or another payment gateway
-        payment_id = f"PAY_{hash(str(amount))}"
-        
-        return {
-            'status': 'success',
-            'payment_id': payment_id,
-            'amount': amount,
-            'message': 'Payment processed successfully'
-        }
-
-    def verify_payment(self, payment_id):
+        try:
+            # Convert amount to paise (Razorpay expects amount in smallest currency unit)
+            amount_in_paise = int(amount * 100)
+            
+            # Create Razorpay order
+            payment_data = {
+                'amount': amount_in_paise,
+                'currency': 'INR',
+                'payment_capture': '1'
+            }
+            
+            order = self.client.order.create(data=payment_data)
+            
+            return {
+                'status': 'success',
+                'payment_id': order['id'],
+                'amount': amount,
+                'message': 'Payment initiated successfully'
+            }
+            
+        except Exception as e:
+            return {
+                'status': 'error',
+                'payment_id': None,
+                'amount': amount,
+                'message': f'Payment failed: {str(e)}'
+            }
+    
+    def verify_payment(self, payment_id: str) -> Dict[str, Any]:
         """
-        Verify a payment status
-        For demo purposes, always returns success
+        Verify a payment status with Razorpay
+        Args:
+            payment_id: Razorpay payment ID
+        Returns:
+            Dict containing verification status
         """
-        return {
-            'status': 'success',
-            'payment_id': payment_id,
-            'message': 'Payment verified successfully'
-        }
+        try:
+            payment = self.client.payment.fetch(payment_id)
+            if payment['status'] == 'captured':
+                return {
+                    'status': 'success',
+                    'payment_id': payment_id,
+                    'message': 'Payment verified successfully'
+                }
+            return {
+                'status': 'pending',
+                'payment_id': payment_id,
+                'message': f'Payment status: {payment["status"]}'
+            }
+        except Exception as e:
+            return {
+                'status': 'error',
+                'payment_id': payment_id,
+                'message': f'Verification failed: {str(e)}'
+            }
