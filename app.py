@@ -1,7 +1,7 @@
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 from database.db_utils import DatabaseManager
-#from utils.payment import PaymentManager
+from utils.payment import PaymentManager  # Uncomment this line
 import sqlite3
 import pandas as pd
 from datetime import datetime
